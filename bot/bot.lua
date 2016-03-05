@@ -238,6 +238,9 @@ function create_config( )
       "lol",
       "webshot",
       "bot",
+      "musick",
+      "music".
+      "gps",
       "echofile",
       "commands",
       "english_lang",
