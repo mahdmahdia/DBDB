@@ -238,8 +238,7 @@ function create_config( )
       "lol",
       "webshot",
       "bot",
-      "musick",
-      "music".
+      "admin",
       "gps",
       "echofile",
       "commands",
