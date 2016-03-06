@@ -1,5 +1,6 @@
 local sudos = {
     "plugins",
+    "admin",
     "rank_admin",
     "bot",
     "lang_install",
