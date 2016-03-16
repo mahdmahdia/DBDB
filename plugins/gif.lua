@@ -1,74 +1,78 @@
+local function is_channel_disabled( receiver )
+	if not _config.disabled_channels then
+		return false
+	end
 
-do
+	if _config.disabled_channels[receiver] == nil then
+		return false
+	end
 
-local BASE_URL = 'http://api.giphy.com/v1'
-local API_KEY = 'dc6zaTOxFJmzC' -- public beta key
-
-local function get_image(response)
-  local images = json:decode(response).data
-  if #images == 0 then return nil end -- No images
-  local i = math.random(#images)
-  local image =  images[i] -- A random one
-
-  if image.images.downsized then
-    return image.images.downsized.url
-  end
-
-  if image.images.original then
-    return image.original.url
-  end
-
-  return nil
+  return _config.disabled_channels[receiver]
 end
 
-local function get_random_top()
-  local url = BASE_URL.."/gifs/trending?api_key="..API_KEY
-  local response, code = http.request(url)
-  if code ~= 200 then return nil end
-  return get_image(response)
+local function enable_channel(receiver, to_id)
+	if not _config.disabled_channels then
+		_config.disabled_channels = {}
+	end
+
+	if _config.disabled_channels[receiver] == nil then
+		return lang_text(to_id, 'botOn')..''
+	end
+	
+	_config.disabled_channels[receiver] = false
+
+	save_config()
+	return lang_text(to_id, 'botOn')..''
 end
 
-local function search(text)
-  text = URL.escape(text)
-  local url = BASE_URL.."/gifs/search?q="..text.."&api_key="..API_KEY
-  local response, code = http.request(url)
-  if code ~= 200 then return nil end
-  return get_image(response)
+local function disable_channel(receiver, to_id)
+	if not _config.disabled_channels then
+		_config.disabled_channels = {}
+	end
+	
+	_config.disabled_channels[receiver] = true
+
+	save_config()
+	return lang_text(to_id, 'botOff')..' '
+end
+
+local function pre_process(msg)
+	local receiver = get_receiver(msg)
+	
+	-- If sender is sudo then re-enable the channel
+	if is_sudo(msg) then
+	  if msg.text == "#bot on" then
+	    enable_channel(receiver, msg.to.id)
+	  end
+	end
+
+  if is_channel_disabled(receiver) then
+  	msg.text = ""
+  end
+
+	return msg
 end
 
 local function run(msg, matches)
-  local gif_url = nil
-  
-  -- If no search data, a random trending GIF will be sent
-  if matches[1] == "!gif" or matches[1] == "!giphy" then
-    gif_url = get_random_top()
-  else
-    gif_url = search(matches[1])
-  end
-
-  if not gif_url then 
-    return "Error: GIF not found"
-  end
-
-  local receiver = get_receiver(msg)
-  print("GIF URL"..gif_url)
-  
-  send_document_from_url(receiver, gif_url)
+	if permissions(msg.from.id, msg.to.id, "bot") then
+		local receiver = get_receiver(msg)
+		-- Enable a channel
+		if matches[1] == 'on' then
+			return enable_channel(receiver, msg.to.id)
+		end
+		-- Disable a channel
+		if matches[1] == 'off' then
+			return disable_channel(receiver, msg.to.id)
+		end
+	else
+		return '🚫 '..lang_text(msg.to.id, 'require_sudo')
+	end
 end
 
 return {
-  description = "GIFs from telegram with Giphy API",
-  usage = {
-    "!gif (term): Search and sends GIF from Giphy. If no param, sends a trending GIF.",
-    "!giphy (term): Search and sends GIF from Giphy. If no param, sends a trending GIF."
-    },
-  patterns = {
-    "^!gif$",
-    "^!gif (.*)",
-    "^!giphy (.*)",
-    "^!giphy$"
-  },
-  run = run
+	patterns = {
+		"^#bot? (on)",
+		"^#bot? (off)" }, 
+	run = run,
+	pre_process = pre_process
 }
-
-end
